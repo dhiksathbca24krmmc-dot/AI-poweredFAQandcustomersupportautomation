@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI FAQ Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f2f4ee;
+    --paper: #fbfcf8;
+    --ink: #17282c;
+    --muted: #5d6d70;
+    --line: #d5dbd0;
+    --accent: #0f766e;
+    --accent-ink: #ffffff;
+    --mark: #f5d547;
+    --danger: #b3261e;
+    --sans: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.5;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 20px; }
+
+  /* top bar */
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0; }
+  .brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
+  .who { display: flex; align-items: center; gap: 10px; font-size: .92rem; color: var(--muted); }
+
+  /* buttons */
+  .btn {
+    border: 1.5px solid var(--ink); background: transparent; border-radius: 999px;
+    padding: 8px 16px; cursor: pointer; font-weight: 600; transition: background .15s, color .15s;
+  }
+  .btn:hover { background: var(--ink); color: var(--bg); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { background: #0b5c56; border-color: #0b5c56; color: #fff; }
+  .btn.small { padding: 4px 12px; font-size: .85rem; }
+  .btn.danger { border-color: var(--danger); color: var(--danger); }
+  .btn.danger:hover { background: var(--danger); color: #fff; }
+  .btn[disabled] { opacity: .5; cursor: progress; }
+
+  /* hero */
+  .hero { padding: 40px 0 8px; }
+  h1 {
+    font-size: clamp(2.4rem, 7vw, 4.2rem); line-height: 1; margin: 0 0 12px;
+    font-weight: 800; letter-spacing: -0.035em;
+  }
+  .lede { margin: 0 0 24px; color: var(--muted); font-size: 1.1rem; max-width: 46ch; }
+
+  .ask {
+    display: flex; gap: 8px; background: var(--paper); border: 2px solid var(--ink);
+    border-radius: 16px; padding: 8px; box-shadow: 6px 6px 0 var(--ink);
+  }
+  .ask input {
+    flex: 1; min-width: 0; border: 0; background: transparent; padding: 10px 12px; font-size: 1.15rem;
+  }
+  .ask input:focus-visible { outline: none; }
+  .ask:focus-within { box-shadow: 6px 6px 0 var(--accent); border-color: var(--accent); }
+  .hint { margin: 14px 2px 0; font-size: .9rem; color: var(--muted); }
+
+  /* AI answer */
+  .answer {
+    margin-top: 24px; background: var(--paper); border-left: 6px solid var(--accent);
+    padding: 16px 20px; border-radius: 0 12px 12px 0;
+  }
+  .answer h2 { margin: 0 0 6px; font-size: .95rem; color: var(--accent); }
+  .answer p { margin: 0; font-family: var(--serif); font-size: 1.15rem; white-space: pre-wrap; line-height: 1.6; }
+  .answer .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* list header */
+  .listhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 40px 0 10px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    border: 1.5px solid var(--line); background: transparent; border-radius: 999px;
+    padding: 4px 14px; cursor: pointer; font-size: .9rem;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .count { color: var(--muted); font-size: .9rem; }
+
+  /* faq rows */
+  .faqs { border-top: 2px solid var(--ink); }
+  details { border-bottom: 1px solid var(--line); }
+  summary {
+    list-style: none; cursor: pointer; padding: 18px 4px; display: flex; gap: 14px;
+    align-items: baseline; justify-content: space-between; font-weight: 600; font-size: 1.1rem;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: "+"; font-size: 1.5rem; line-height: 1; color: var(--accent);
+    transition: transform .2s; flex-shrink: 0;
+  }
+  details[open] summary::after { transform: rotate(45deg); }
+  .body { padding: 0 4px 20px; }
+  .body p { margin: 0 0 12px; font-family: var(--serif); font-size: 1.15rem; line-height: 1.65; max-width: 62ch; white-space: pre-wrap; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+  .tag { border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; }
+  mark { background: var(--mark); color: inherit; padding: 0 2px; border-radius: 3px; }
+  .state { padding: 40px 4px; color: var(--muted); }
+  .state.err { color: var(--danger); }
+
+  /* dialogs */
+  dialog {
+    border: 2px solid var(--ink); border-radius: 16px; padding: 24px; width: min(480px, calc(100vw - 32px));
+    background: var(--paper); color: var(--ink); box-shadow: 8px 8px 0 var(--ink);
+  }
+  dialog::backdrop { background: rgba(23, 40, 44, .45); }
+  dialog h3 { margin: 0 0 16px; font-size: 1.4rem; letter-spacing: -0.02em; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
+  .field {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; padding: 9px 12px;
+  }
+  textarea.field { min-height: 120px; resize: vertical; font-family: var(--serif); font-size: 1.05rem; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .formerr { color: var(--danger); font-size: .9rem; min-height: 1.3em; margin: 10px 0 0; }
+  .draft { display: flex; gap: 8px; }
+  .draft .field { flex: 1; }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px;
+    font-size: .95rem; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+
+  footer { padding: 48px 0 32px; color: var(--muted); font-size: .85rem; }
+
+  /* ============ RESPONSIVE MOBILE UI ============ */
+  @media (max-width: 700px) {
+    .wrap { max-width: 100%; padding: 0 16px; }
+    .bar { padding: 14px 0; }
+    .hero { padding-top: 28px; }
+    .lede { font-size: 1rem; }
+
+    .listhead {
+      align-items: stretch;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .chips {
+      width: 100%;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      padding: 2px 2px 8px;
+      scrollbar-width: thin;
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      min-height: 38px;
+    }
+
+    .listhead > div:last-child {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .listhead > div:last-child .btn {
+      min-height: 40px;
+    }
+
+    summary {
+      padding: 16px 2px;
+      font-size: 1rem;
+      gap: 10px;
+    }
+
+    .body { padding: 0 2px 18px; }
+    .body p { font-size: 1.05rem; }
+
+    .answer {
+      padding: 14px 16px;
+      margin-top: 20px;
+    }
+
+    .answer .actions {
+      flex-direction: column;
+    }
+
+    .answer .actions .btn {
+      width: 100%;
+    }
+
+    dialog {
+      width: calc(100vw - 24px);
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 18px;
+    }
+
+    .draft {
+      flex-direction: column;
+    }
+
+    .draft .btn {
+      width: 100%;
+      min-height: 42px;
+    }
+
+    .row {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+
+    .row .btn {
+      width: 100%;
+      min-height: 42px;
+    }
+
+    .field {
+      min-height: 42px;
+      font-size: 16px; /* prevents iOS zoom */
+    }
+
+    textarea.field { min-height: 150px; }
+
+    footer {
+      padding: 36px 0 24px;
+      word-break: break-word;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .brand { font-size: 1rem; }
+    .who { gap: 6px; }
+    .who span { display: none; }
+
+    .hero h1 {
+      font-size: clamp(2.35rem, 14vw, 3.4rem);
+    }
+
+    .ask {
+      flex-direction: column;
+      box-shadow: 4px 4px 0 var(--ink);
+      padding: 7px;
+    }
+
+    .ask input {
+      width: 100%;
+      padding: 12px 10px;
+      font-size: 1rem;
+    }
+
+    .ask .btn {
+      width: 100%;
+      min-height: 44px;
+    }
+
+    .hint { font-size: .82rem; }
+
+    .count { font-size: .82rem; }
+
+    .listhead > div:last-child {
+      gap: 8px !important;
+    }
+
+    .listhead > div:last-child .btn {
+      flex: 1;
+    }
+
+    .meta { gap: 6px; }
+    .meta .btn { min-height: 36px; }
+
+    .toast {
+      left: 12px;
+      right: 12px;
+      width: auto;
+      text-align: center;
+      transform: none;
+      bottom: 14px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+
+/* ===== ANIME / NEON UI THEME ===== */
+:root{
+  --bg:#0b0d1a;
+  --paper:#15182b;
+  --ink:#f4f3ff;
+  --muted:#a9afd0;
+  --line:#303552;
+  --accent:#a855f7;
+  --accent-ink:#fff;
+  --mark:#facc15;
+  --danger:#fb7185;
+  --sans:"Bricolage Grotesque",system-ui,sans-serif;
+  --serif:"Newsreader",Georgia,serif;
+}
+body{
+  background:
+    radial-gradient(circle at 10% 10%,rgba(168,85,247,.18),transparent 28%),
+    radial-gradient(circle at 90% 25%,rgba(59,130,246,.14),transparent 25%),
+    radial-gradient(circle at 50% 100%,rgba(236,72,153,.10),transparent 30%),
+    var(--bg);
+  color:var(--ink);
+}
+body::before{
+  content:"";
+  position:fixed; inset:0; pointer-events:none; z-index:-1;
+  background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:32px 32px;
+}
+.wrap{max-width:900px}
+.bar{padding:20px 0}
+.brand{
+  font-size:1.15rem;
+  color:#fff;
+  text-shadow:0 0 14px rgba(168,85,247,.7);
+}
+.brand::before{content:"✦ ";color:#c084fc}
+.btn{
+  border:1px solid #454b70;
+  background:#171a30;
+  color:var(--ink);
+  box-shadow:0 3px 0 #090a13;
+  transition:.2s ease;
+}
+.btn:hover{
+  background:#252943;
+  color:#fff;
+  transform:translateY(-2px);
+  box-shadow:0 5px 0 #090a13,0 0 18px rgba(168,85,247,.25);
+}
+.btn.primary{
+  background:linear-gradient(135deg,#a855f7,#6366f1);
+  border-color:#b477ff;
+  box-shadow:0 4px 0 #4c1d95,0 0 22px rgba(168,85,247,.28);
+}
+.btn.primary:hover{background:linear-gradient(135deg,#c084fc,#818cf8)}
+.hero{padding:55px 0 12px}
+h1{
+  background:linear-gradient(90deg,#fff,#c4b5fd 45%,#93c5fd);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 30px rgba(168,85,247,.18);
+}
+.lede{color:#b7bddb}
+.ask{
+  background:rgba(21,24,43,.92);
+  border:1px solid #555b83;
+  border-radius:20px;
+  box-shadow:8px 8px 0 #05060d,0 0 30px rgba(99,102,241,.12);
+  backdrop-filter:blur(10px);
+}
+.ask:focus-within{
+  border-color:#a855f7;
+  box-shadow:8px 8px 0 #05060d,0 0 30px rgba(168,85,247,.3);
+}
+.ask input{color:#fff}
+.ask input::placeholder{color:#777fa6}
+.hint{color:#858dab}
+.answer{
+  background:linear-gradient(135deg,rgba(28,24,52,.96),rgba(19,25,52,.96));
+  border-left:5px solid #a855f7;
+  border-radius:14px;
+  box-shadow:0 0 25px rgba(168,85,247,.13);
+}
+.answer h2{color:#c084fc}
+.answer p{color:#e8e8f5}
+.listhead{margin-top:45px}
+.chip{
+  border-color:#3a4060;
+  background:#111427;
+  color:#aeb5d4;
+}
+.chip:hover{border-color:#8b5cf6;color:#fff}
+.chip[aria-pressed="true"]{
+  background:linear-gradient(135deg,#7c3aed,#4f46e5);
+  border-color:#9b7aff;
+  color:#fff;
+  box-shadow:0 0 15px rgba(124,58,237,.3);
+}
+.count{color:#8e96b8}
+.faqs{
+  border-top:1px solid #454b70;
+  background:rgba(15,17,31,.35);
+  border-radius:16px;
+  overflow:hidden;
+}
+details{border-bottom:1px solid #292e49}
+details:last-child{border-bottom:0}
+summary{
+  padding:20px 16px;
+  color:#f5f5ff;
+}
+summary:hover{background:rgba(139,92,246,.07)}
+summary::after{color:#c084fc}
+.body{padding:0 16px 22px}
+.body p{color:#cdd1e7}
+.tag{border-color:#464c70;color:#aeb5d4;background:#111427}
+mark{background:#facc15;color:#171717}
+.state{padding:45px 16px;color:#858dab}
+dialog{
+  background:#111427;
+  border-color:#555b83;
+  box-shadow:10px 10px 0 #05060d,0 0 40px rgba(168,85,247,.2);
+}
+dialog::backdrop{background:rgba(2,3,10,.72);backdrop-filter:blur(5px)}
+dialog h3{color:#fff}
+.field{
+  background:#0b0d1a;
+  color:#f4f3ff;
+  border-color:#3d4465;
+}
+.field:focus{border-color:#a855f7;outline:none;box-shadow:0 0 0 3px rgba(168,85,247,.14)}
+select.field option{background:#111427;color:#fff}
+.formerr{color:#fb7185}
+.toast{
+  background:#f4f3ff;
+  color:#17182a;
+  box-shadow:0 5px 25px rgba(0,0,0,.35);
+}
+footer{color:#70799c}
+@media(max-width:520px){
+  .hero{padding-top:35px}
+  .ask{box-shadow:5px 5px 0 #05060d}
+  .faqs{border-radius:12px}
+  summary{padding:17px 13px}
+  .body{padding:0 13px 18px}
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="bar">
+    <div class="brand">FAQ Assistant</div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <section class="hero">
+    <h1>Look it up.<br>Or just ask.</h1>
+    <p class="lede">Type to filter the saved answers. If nothing fits, hand the question to the AI.</p>
+
+    <div class="ask" role="search">
+      <input id="q" type="text" placeholder="What do you want to know?" aria-label="Search or ask a question" autocomplete="off">
+      <button class="btn primary" id="askBtn" type="button">Ask AI</button>
+    </div>
+    <p class="hint">Searching filters the list below as you type. Asking the AI needs you to be signed in.</p>
+
+    <div class="answer" id="answer" hidden>
+      <h2>AI answer</h2>
+      <p id="answerText"></p>
+      <div class="actions">
+        <button class="btn small" id="saveAnswer" type="button">Save as an FAQ</button>
+        <button class="btn small" id="closeAnswer" type="button">Dismiss</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="listhead">
+      <div class="chips" id="chips"></div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="count" id="count"></span>
+        <button class="btn small primary" id="newBtn" type="button">New FAQ</button>
+      </div>
+    </div>
+    <div class="faqs" id="faqs" aria-live="polite"></div>
+  </section>
+
+  <footer>Connected to <span id="apiLabel"></span></footer>
+</div>
+
+<!-- Auth dialog -->
+<dialog id="authDlg">
+  <h3 id="authTitle">Sign in</h3>
+  <div class="tabs">
+    <button class="chip" id="tabLogin" type="button" aria-pressed="true">Sign in</button>
+    <button class="chip" id="tabRegister" type="button" aria-pressed="false">Create account</button>
+  </div>
+  <form id="authForm">
+    <div id="nameWrap" hidden>
+      <label for="aName">Name</label>
+      <input class="field" id="aName" autocomplete="name">
+    </div>
+    <label for="aEmail">Email</label>
+    <input class="field" id="aEmail" type="email" required autocomplete="email">
+    <label for="aPass">Password</label>
+    <input class="field" id="aPass" type="password" required minlength="6" autocomplete="current-password">
+    <p class="formerr" id="authErr"></p>
+    <div class="row">
+      <button class="btn" type="button" data-close="authDlg">Cancel</button>
+      <button class="btn primary" type="submit" id="authSubmit">Sign in</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- FAQ editor dialog -->
+<dialog id="faqDlg">
+  <h3 id="faqTitle">New FAQ</h3>
+  <form id="faqForm">
+    <label for="fTopic">Draft with AI (optional)</label>
+    <div class="draft">
+      <input class="field" id="fTopic" placeholder="Topic, e.g. MongoDB indexes">
+      <button class="btn" type="button" id="draftBtn">Draft</button>
+    </div>
+    <label for="fQ">Question</label>
+    <input class="field" id="fQ" required>
+    <label for="fA">Answer</label>
+    <textarea class="field" id="fA" required></textarea>
+    <label for="fC">Category</label>
+    <select class="field" id="fC">
+      <option>General</option><option>Technology</option><option>Education</option>
+      <option>Health</option><option>Banking</option>
+    </select>
+    <p class="formerr" id="faqErr"></p>
+    <div class="row">
+      <button class="btn" type="button" data-close="faqDlg">Cancel</button>
+      <button class="btn primary" type="submit" id="faqSubmit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const API = "http://localhost:5000";   // change if your backend runs elsewhere
+const CATEGORIES = ["All", "Technology", "Education", "Health", "Banking", "General"];
+
+/* ============ STATE ============ */
+const state = {
+  faqs: [],
+  query: "",
+  category: "All",
+  token: localStorage.getItem("token") || "",
+  user: JSON.parse(localStorage.getItem("user") || "null"),
+  editingId: null,
+  lastAnswer: null,          // {question, answer}
+};
+
+const $ = (id) => document.getElementById(id);
+
+/* ============ HELPERS ============ */
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function highlight(text, q) {
+  const safe = esc(text);
+  if (!q) return safe;
+  const pattern = esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return safe.replace(new RegExp(`(${pattern})`, "gi"), "<mark>$1</mark>");
+}
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* Every call to the backend goes through here. */
+async function api(path, { method = "GET", body, auth = false } = {}) {
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (auth && state.token) headers.Authorization = `Bearer ${state.token}`;
+  let res;
+  try {
+    res = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  } catch {
+    throw new Error(`Cannot reach the server at ${API}. Is the backend running?`);
+  }
+  let data = {};
+  try { data = await res.json(); } catch { /* non-JSON response */ }
+  if (res.status === 401) { logout(true); }
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || data.error || `Request failed (${res.status})`);
+  }
+  return data;
+}
+
+/* ============ AUTH ============ */
+function renderWho() {
+  const w = $("who");
+  if (state.user) {
+    w.innerHTML = `<span>${esc(state.user.name || state.user.email)}</span><button class="btn small" id="logoutBtn" type="button">Sign out</button>`;
+    $("logoutBtn").onclick = () => logout();
+  } else {
+    w.innerHTML = `<button class="btn small" id="loginBtn" type="button">Sign in</button>`;
+    $("loginBtn").onclick = () => openAuth("login");
+  }
+}
+function logout(silent) {
+  state.token = ""; state.user = null;
+  localStorage.removeItem("token"); localStorage.removeItem("user");
+  renderWho(); renderList();
+  if (!silent) toast("Signed out");
+}
+let authMode = "login";
+function openAuth(mode = "login", msg = "") {
+  setAuthMode(mode);
+  $("authErr").textContent = msg;
+  $("authDlg").showModal();
+  $("aEmail").focus();
+}
+function setAuthMode(mode) {
+  authMode = mode;
+  const reg = mode === "register";
+  $("tabLogin").setAttribute("aria-pressed", String(!reg));
+  $("tabRegister").setAttribute("aria-pressed", String(reg));
+  $("nameWrap").hidden = !reg;
+  $("aName").required = reg;
+  $("authTitle").textContent = reg ? "Create account" : "Sign in";
+  $("authSubmit").textContent = reg ? "Create account" : "Sign in";
+  $("aPass").autocomplete = reg ? "new-password" : "current-password";
+}
+$("tabLogin").onclick = () => setAuthMode("login");
+$("tabRegister").onclick = () => setAuthMode("register");
+
+$("authForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("authErr").textContent = "";
+  const btn = $("authSubmit"); btn.disabled = true;
+  const email = $("aEmail").value.trim(), password = $("aPass").value;
+  try {
+    if (authMode === "register") {
+      await api("/api/auth/register", { method: "POST", body: { name: $("aName").value.trim(), email, password } });
+    }
+    const res = await api("/api/auth/login", { method: "POST", body: { email, password } });
+    state.token = res.data.token;
+    state.user = { _id: res.data._id, name: res.data.name, email: res.data.email };
+    localStorage.setItem("token", state.token);
+    localStorage.setItem("user", JSON.stringify(state.user));
+    $("authDlg").close(); $("authForm").reset();
+    renderWho(); renderList();
+    toast(`Welcome, ${state.user.name || state.user.email}`);
+  } catch (err) {
+    $("authErr").textContent = err.message;
+  } finally { btn.disabled = false; }
+});
+
+/* ============ FAQ LIST ============ */
+async function loadFaqs() {
+  $("faqs").innerHTML = `<div class="state">Loading…</div>`;
+  try {
+    const path = state.query ? `/api/faqs/search?q=${encodeURIComponent(state.query)}` : "/api/faqs";
+    const res = await api(path);
+    state.faqs = res.data || [];
+    renderList();
+  } catch (err) {
+    $("faqs").innerHTML = `<div class="state err">${esc(err.message)}</div>`;
+    $("count").textContent = "";
+  }
+}
+
+function isOwner(f) {
+  if (!state.user) return false;
+  const o = f.createdBy ?? f.user ?? f.owner ?? f.author;
+  if (!o) return true;                       // backend enforces the real check
+  const id = typeof o === "object" ? o._id : o;
+  return id === state.user._id;
+}
+
+function renderList() {
+  const list = state.faqs.filter((f) => state.category === "All" || f.category === state.category);
+  $("count").textContent = `${list.length} ${list.length === 1 ? "answer" : "answers"}`;
+  if (!list.length) {
+    $("faqs").innerHTML = `<div class="state">${state.query ? "Nothing matches that. Try “Ask AI” above." : "No FAQs yet. Add the first one."}</div>`;
+    return;
+  }
+  const open = state.query && list.length <= 3;   // auto-open when the search is narrow
+  $("faqs").innerHTML = list.map((f) => `
+    <details ${open ? "open" : ""}>
+      <summary>${highlight(f.question, state.query)}</summary>
+      <div class="body">
+        <p>${highlight(f.answer, state.query)}</p>
+        <div class="meta">
+          <span class="tag">${esc(f.category || "General")}</span>
+          ${isOwner(f) ? `
+            <button class="btn small" data-edit="${esc(f._id)}" type="button">Edit</button>
+            <button class="btn small danger" data-del="${esc(f._id)}" type="button">Delete</button>` : ""}
+        </div>
+      </div>
+    </details>`).join("");
+}
+
+function renderChips() {
+  $("chips").innerHTML = CATEGORIES.map((c) =>
+    `<button class="chip" type="button" data-cat="${c}" aria-pressed="${c === state.category}">${c}</button>`).join("");
+}
+$("chips").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-cat]"); if (!c) return;
+  state.category = c.dataset.cat; renderChips(); renderList();
+});
+
+$("faqs").addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+  if (ed) {
+    const f = state.faqs.find((x) => x._id === ed.dataset.edit);
+    openEditor(f);
+  }
+  if (del) {
+    if (!confirm("Delete this FAQ?")) return;
+    try {
+      await api(`/api/faqs/${del.dataset.del}`, { method: "DELETE", auth: true });
+      state.faqs = state.faqs.filter((x) => x._id !== del.dataset.del);
+      renderList(); toast("FAQ deleted");
+    } catch (err) { toast(err.message); }
+  }
+});
+
+/* live search with debounce */
+let searchTimer;
+$("q").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.query = e.target.value.trim(); loadFaqs(); }, 300);
+});
+
+/* ============ ASK AI ============ */
+async function askAI() {
+  const question = $("q").value.trim();
+  if (!question) { $("q").focus(); return; }
+  if (!state.token) { openAuth("login", "Sign in to ask the AI."); return; }
+  const btn = $("askBtn"); btn.disabled = true; btn.textContent = "Thinking…";
+  try {
+    const res = await api("/api/ai/answer", { method: "POST", auth: true, body: { question } });
+    state.lastAnswer = { question, answer: res.answer };
+    $("answerText").textContent = res.answer;
+    $("answer").hidden = false;
+  } catch (err) { toast(err.message); }
+  finally { btn.disabled = false; btn.textContent = "Ask AI"; }
+}
+$("askBtn").onclick = askAI;
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") askAI(); });
+$("closeAnswer").onclick = () => { $("answer").hidden = true; };
+$("saveAnswer").onclick = () => {
+  if (!state.lastAnswer) return;
+  openEditor(null, state.lastAnswer);
+};
+
+/* ============ CREATE / EDIT ============ */
+function openEditor(faq, prefill) {
+  if (!state.token) { openAuth("login", "Sign in to manage FAQs."); return; }
+  state.editingId = faq ? faq._id : null;
+  $("faqTitle").textContent = faq ? "Edit FAQ" : "New FAQ";
+  $("fQ").value = faq?.question ?? prefill?.question ?? "";
+  $("fA").value = faq?.answer ?? prefill?.answer ?? "";
+  $("fC").value = faq?.category ?? "General";
+  $("fTopic").value = ""; $("faqErr").textContent = "";
+  $("faqDlg").showModal();
+}
+$("newBtn").onclick = () => openEditor(null);
+
+$("draftBtn").onclick = async () => {
+  const topic = $("fTopic").value.trim();
+  if (!topic) { $("fTopic").focus(); return; }
+  const btn = $("draftBtn"); btn.disabled = true; btn.textContent = "Drafting…";
+  $("faqErr").textContent = "";
+  try {
+    const res = await api("/api/ai/generate-faq", { method: "POST", auth: true, body: { topic } });
+    $("fQ").value = res.question; $("fA").value = res.answer;
+  } catch (err) { $("faqErr").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = "Draft"; }
+};
+
+$("faqForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("faqErr").textContent = "";
+  const btn = $("faqSubmit"); btn.disabled = true;
+  const body = { question: $("fQ").value.trim(), answer: $("fA").value.trim(), category: $("fC").value };
+  try {
+    if (state.editingId) await api(`/api/faqs/${state.editingId}`, { method: "PUT", auth: true, body });
+    else await api("/api/faqs", { method: "POST", auth: true, body });
+    $("faqDlg").close();
+    toast(state.editingId ? "FAQ updated" : "FAQ added");
+    loadFaqs();
+  } catch (err) { $("faqErr").textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+
+/* dialog close buttons */
+document.querySelectorAll("[data-close]").forEach((b) => b.onclick = () => $(b.dataset.close).close());
+
+/* ============ INIT ============ */
+$("apiLabel").textContent = API;
+renderWho(); renderChips(); loadFaqs();
+</script>
+</body>
+</html>
